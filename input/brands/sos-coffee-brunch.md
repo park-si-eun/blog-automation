@@ -156,8 +156,8 @@
 - **네이버 플레이스**: https://naver.me/FhUL1X7w
 - **네이버 스마트스토어**: https://smartstore.naver.com/soscoffee/products/9008456901
 - **인스타그램**: @sos_coffee_ / https://www.instagram.com/sos_coffee_
-- **네이버 블로그**: [확인 필요]
-- **카카오채널**: [확인 필요]
+- **네이버 블로그**: https://blog.naver.com/soscoffee
+- **카카오채널**: https://pf.kakao.com/_EZXVxj
 
 ---
 
