@@ -27,14 +27,14 @@ description: 브랜드 프로필 기반 블로그 콘텐츠 기획안 생성
 
 ### 1. 브랜드 프로필 로딩
 다음 경로에서 브랜드 파일을 탐색한다 (순서대로):
-1. `brands/BRAND_SLUG.md`
-2. `brands/BRAND_SLUG/profile.md`
-3. `brands/` 하위에서 파일명에 `BRAND_SLUG`가 포함된 `.md` 파일
+1. `input/brands/BRAND_SLUG.md`
+2. `input/brands/BRAND_SLUG/profile.md`
+3. `input/brands/` 하위에서 파일명에 `BRAND_SLUG`가 포함된 `.md` 파일
 
 **매칭 실패 시** 아래 메시지를 출력하고 중단:
 ```
 브랜드 파일을 찾을 수 없습니다: BRAND_SLUG
-brands/_template.md 를 복사해 브랜드 프로필을 먼저 작성해 주세요.
+input/brands/_template.md 를 복사해 브랜드 프로필을 먼저 작성해 주세요.
 ```
 
 ---
