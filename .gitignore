@@ -1,0 +1,37 @@
+# 환경 변수 (API 키 포함 — 절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+
+# 생성 결과물 (대용량 글 파일 누적 방지)
+output/
+
+# 보관 파일
+archive/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (필요 시)
+node_modules/
+npm-debug.log*
+
+# Python (필요 시)
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/

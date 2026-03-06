@@ -1,0 +1,97 @@
+# CLAUDE.md — 블로그 자동화 시스템 매뉴얼
+
+이 문서는 Claude Code가 이 프로젝트를 올바르게 이해하고 운영하기 위한 시스템 매뉴얼입니다.
+
+---
+
+## 시스템 개요
+
+이 프로젝트는 **브랜드 교체형 블로그 자동화 템플릿**입니다.
+
+- 특정 브랜드에 종속되지 않습니다
+- `input/brands/` 하위의 브랜드 프로필 파일 하나만 교체하면 어떤 브랜드에도 적용됩니다
+- 모든 에이전트와 커맨드는 브랜드 프로필을 런타임에 로드하여 동작합니다
+- **어떤 파일에도 특정 브랜드명, 메뉴명, 가격, 주소를 하드코딩하지 않습니다**
+
+---
+
+## 핵심 원칙
+
+### 1. 브랜드 비고정 (Brand-Agnostic)
+- 에이전트 파일, 커맨드 파일, CLAUDE.md에 특정 브랜드 정보를 직접 기재하지 않는다
+- 브랜드 정보는 반드시 `input/brands/[brand-slug].md` 에서 읽어온다
+
+### 2. 정보 무날조 (No Fabrication)
+- 브랜드 프로필에 없는 정보(메뉴, 가격, 위치, 영업시간 등)를 절대 지어내지 않는다
+- 정보가 불확실하면 "[확인 필요]" 표시 후 사용자에게 안내한다
+
+### 3. 글 유형 자동 판별
+- 키워드를 브랜드 프로필의 `유형별 키워드 목록`과 대조해 글 유형을 결정한다
+- 판별 불가 시 사용자에게 확인을 요청한다
+
+### 4. 파이프(`|`) 기반 ARGUMENTS 파싱
+- 모든 커맨드는 `$ARGUMENTS`를 `|` 기준으로 파싱한다
+- 파이프 앞: 브랜드 슬러그, 파이프 뒤: 키워드 또는 파일 경로
+
+---
+
+## 브랜드 프로필 로딩 규칙
+
+커맨드 및 에이전트 실행 시 아래 순서로 브랜드 파일을 탐색한다:
+
+1. `input/brands/BRAND_SLUG.md`
+2. `input/brands/BRAND_SLUG/profile.md`
+3. `input/brands/` 하위에서 파일명에 `BRAND_SLUG`가 포함된 `.md` 파일
+
+**매칭 실패 시:**
+```
+브랜드 파일을 찾을 수 없습니다: BRAND_SLUG
+input/brands/_template.md 를 복사해 브랜드 프로필을 먼저 작성해 주세요.
+```
+
+---
+
+## 디렉토리 역할
+
+| 경로 | 역할 |
+|------|------|
+| `CLAUDE.md` | 시스템 매뉴얼 (이 파일) |
+| `.claude/commands/` | Claude Code 슬래시 커맨드 정의 |
+| `agents/` | 7명 전문가 에이전트 역할 정의 |
+| `input/brands/` | 브랜드 프로필 파일 보관 |
+| `input/keywords/` | 브랜드별 키워드 목록 파일 |
+| `output/` | 생성된 글·기획안·감사 결과 (gitignore) |
+| `archive/` | 보관용 파일 (gitignore) |
+
+---
+
+## 에이전트 실행 순서 (7명 릴레이)
+
+`/blog` 커맨드 실행 시 아래 순서로 에이전트가 역할을 넘겨받는다:
+
+```
+01-researcher → 02-strategist → 03-writer →
+04-seo-optimizer → 05-brand-editor → 06-cta-specialist → 07-qa-checker
+```
+
+각 에이전트는 `agents/` 폴더의 해당 파일을 참조한다.
+모든 에이전트는 실행 시작 시 브랜드 프로필을 `BRAND_PROFILE` 변수로 로드한다.
+
+---
+
+## 출력 파일 경로 규칙
+
+| 커맨드 | 출력 경로 |
+|--------|-----------|
+| `/blog` | `output/[brand-slug]/blog/YYYYMMDD_키워드슬러그.md` |
+| `/blog-plan` | `output/[brand-slug]/plans/YYYYMMDD_키워드슬러그_plan.md` |
+| `/blog-audit` | `output/[brand-slug]/audits/YYYYMMDD_키워드슬러그_audit.md` |
+
+---
+
+## 금지 사항
+
+- 에이전트 또는 커맨드 파일에 특정 브랜드 정보 하드코딩 금지
+- `.env` 파일을 git에 커밋 금지
+- `output/`, `archive/` 폴더를 git에 커밋 금지
+- 브랜드 프로필에 없는 정보를 글에 포함 금지
