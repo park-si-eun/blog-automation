@@ -77,8 +77,8 @@ jobs:
             git push origin HEAD
           fi
 
-      - name: 성공 이메일 알림
-        if: success()
+      - name: 이메일 알림 (항상 실행)
+        if: always()
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -86,42 +86,20 @@ jobs:
           secure: false
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "✅ [블로그 자동화] 오늘의 글 생성 완료"
+          subject: "${{ job.status == 'success' && '✅' || '❌' }} [블로그 자동화] ${{ job.status == 'success' && '오늘의 글 생성 완료' || '글 생성 실패' }}"
           to: ${{ secrets.MAIL_TO }}
           from: ${{ secrets.MAIL_USERNAME }}
           body: |
-            블로그 글 자동 생성이 완료되었습니다.
+            ${{ job.status == 'success' && '블로그 글 자동 생성이 완료되었습니다.' || '⚠️ 블로그 글 생성 중 오류가 발생했습니다.' }}
 
-            📅 날짜: ${{ github.run_id }} 실행
+            📅 실행 ID: ${{ github.run_id }}
             🕗 시간: KST 오전 8시 자동 실행
+            📊 상태: ${{ job.status }}
             📄 파일: ${{ steps.check-files.outputs.blog_file }}
 
             ──────────────────────────────
             ${{ steps.check-files.outputs.blog_content }}
             ──────────────────────────────
 
-            GitHub Actions 실행 결과:
+            GitHub Actions 실행 로그:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      - name: 실패 이메일 알림
-        if: failure()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          secure: false
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "❌ [블로그 자동화] 오늘의 글 생성 실패"
-          to: ${{ secrets.MAIL_TO }}
-          from: ${{ secrets.MAIL_USERNAME }}
-          body: |
-            블로그 글 자동 생성 중 오류가 발생했습니다.
-
-            📅 날짜: ${{ github.run_id }} 실행
-            🕗 시간: KST 오전 8시 자동 실행
-
-            오류 로그 확인:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            GitHub Actions 페이지에서 실패 원인을 확인해 주세요.
