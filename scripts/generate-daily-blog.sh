@@ -34,9 +34,17 @@ PROMPT="${TEMPLATE//\$ARGUMENTS/$ARGUMENTS}"
 
 echo "블로그 글 생성 시작..."
 
-# Claude CLI로 실행 (비대화형 모드)
+# 출력 디렉토리 및 파일 경로 준비
+TODAY=$(date '+%Y%m%d' -d '+9 hours' 2>/dev/null || date -u -v+9H '+%Y%m%d')
+OUTDIR="output/$BRAND/blog"
+OUTFILE="$OUTDIR/${TODAY}_${TARGET}.md"
+mkdir -p "$OUTDIR"
+
+# Claude CLI로 실행 → stdout을 파일로 저장
 claude -p "$PROMPT" \
   --allowedTools "Read,Write,Glob,Bash,Grep" \
-  --output-format text
+  --output-format text > "$OUTFILE"
 
 echo "블로그 글 생성 완료."
+echo "저장 경로: $OUTFILE"
+wc -c "$OUTFILE"
