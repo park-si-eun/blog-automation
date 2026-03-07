@@ -1,0 +1,57 @@
+name: 일별 블로그 자동 생성
+
+on:
+  schedule:
+    # 매주 월~금 오전 8시 (KST) = UTC 전날 23시
+    # UTC 기준: 일~목 23:00
+    - cron: '0 23 * * 0-4'
+  workflow_dispatch:  # 수동 실행 (테스트용)
+
+jobs:
+  generate-blog:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Claude CLI 설치
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: 블로그 글 생성
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_AUTO_APPROVE: "true"
+        run: |
+          chmod +x scripts/generate-daily-blog.sh
+          bash scripts/generate-daily-blog.sh
+
+      - name: 생성된 파일 확인
+        run: |
+          echo "생성된 파일 목록:"
+          git status --short output/ || echo "변경 없음"
+
+      - name: Git 설정
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 커밋 및 푸시
+        run: |
+          git add output/
+          if git diff --staged --quiet; then
+            echo "새로 생성된 블로그 글이 없습니다."
+          else
+            TODAY=$(date '+%Y%m%d' -d '+9 hours')
+            WEEKDAY=$(date '+%A' -d '+9 hours')
+            git commit -m "auto: ${TODAY} ${WEEKDAY} 블로그 글 자동 생성"
+            git push origin HEAD
+          fi
