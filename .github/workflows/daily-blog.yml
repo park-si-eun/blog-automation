@@ -45,9 +45,24 @@ jobs:
             echo "file_list<<EOF" >> $GITHUB_OUTPUT
             echo "$CHANGED" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
+
+            # 새로 생성된 .md 파일 본문 읽기
+            BLOG_FILE=$(git status --short output/ | grep '?? \|A ' | grep '\.md$' | awk '{print $2}' | head -1)
+            if [ -z "$BLOG_FILE" ]; then
+              BLOG_FILE=$(git diff --name-only --cached output/ | grep '\.md$' | head -1)
+            fi
+            if [ -n "$BLOG_FILE" ] && [ -f "$BLOG_FILE" ]; then
+              echo "blog_file=$BLOG_FILE" >> $GITHUB_OUTPUT
+              echo "blog_content<<BLOG_EOF" >> $GITHUB_OUTPUT
+              cat "$BLOG_FILE" >> $GITHUB_OUTPUT
+              echo "BLOG_EOF" >> $GITHUB_OUTPUT
+            else
+              echo "blog_content=글 파일을 찾을 수 없습니다." >> $GITHUB_OUTPUT
+            fi
           else
             echo "has_new_files=false" >> $GITHUB_OUTPUT
             echo "file_list=변경된 파일 없음" >> $GITHUB_OUTPUT
+            echo "blog_content=" >> $GITHUB_OUTPUT
           fi
 
       - name: Git 설정
@@ -84,9 +99,11 @@ jobs:
 
             📅 날짜: ${{ github.run_id }} 실행
             🕗 시간: KST 오전 8시 자동 실행
+            📄 파일: ${{ steps.check-files.outputs.blog_file }}
 
-            📄 생성된 파일:
-            ${{ steps.check-files.outputs.file_list }}
+            ──────────────────────────────
+            ${{ steps.check-files.outputs.blog_content }}
+            ──────────────────────────────
 
             GitHub Actions 실행 결과:
             https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
