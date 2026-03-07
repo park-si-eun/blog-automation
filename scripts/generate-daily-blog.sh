@@ -80,3 +80,42 @@ echo "저장된 파일 경로: $OUTFILE"
 # 한글 파일명 문제 방지용 ASCII 이름 복사본 생성
 cp "$OUTFILE" /tmp/blog_post.md
 echo "복사본 생성: /tmp/blog_post.md ($(wc -c < /tmp/blog_post.md) bytes)"
+
+# ─── 글자수 검증 ─────────────────────────────────────────
+# 화(2)·목(4) = 단체주문글 2,200자 / 나머지 = 매장홍보글 2,000자
+if [ "$DAY" -eq 2 ] || [ "$DAY" -eq 4 ]; then
+  MIN_CHARS=2200
+  POST_TYPE="단체주문글"
+else
+  MIN_CHARS=2000
+  POST_TYPE="매장홍보글"
+fi
+
+CHAR_COUNT=$(python3 - <<'PYEOF'
+with open('/tmp/blog_post.md', 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+filtered = []
+for line in lines:
+    l = line.strip()
+    if l.startswith('[이미지') or l.startswith('https://') or l.startswith('👉') or l.startswith('---') or l.startswith('#') or l == '':
+        continue
+    filtered.append(l)
+text = ' '.join(filtered)
+print(len(text.replace(' ', '')))
+PYEOF
+)
+
+echo "글자수 검증: ${CHAR_COUNT}자 (기준: ${MIN_CHARS}자 이상, ${POST_TYPE})"
+
+if [ -n "$CHAR_COUNT" ] && [ "$CHAR_COUNT" -lt "$MIN_CHARS" ]; then
+  echo "⚠️ 글자수 미달: ${CHAR_COUNT}자"
+  python3 - <<PYEOF
+warning = "⚠️ 글자수 미달 경고: ${CHAR_COUNT}자 (${POST_TYPE} 기준 ${MIN_CHARS}자 이상 필요)\n검토 후 수동으로 보강해 주세요.\n\n---\n\n"
+with open('/tmp/blog_post.md', 'r', encoding='utf-8') as f:
+    content = f.read()
+with open('/tmp/blog_post.md', 'w', encoding='utf-8') as f:
+    f.write(warning + content)
+PYEOF
+else
+  echo "✅ 글자수 통과: ${CHAR_COUNT}자"
+fi
