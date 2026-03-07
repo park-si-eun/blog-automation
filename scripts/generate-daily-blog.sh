@@ -48,6 +48,9 @@ claude -p "$PROMPT" \
 
 CLAUDE_EXIT=${PIPESTATUS[0]}
 echo "Claude 종료 코드: $CLAUDE_EXIT"
+if [ "$CLAUDE_EXIT" -ne 0 ]; then
+  echo "⚠️ Claude 비정상 종료 (코드: $CLAUDE_EXIT) — 출력 파일 확인 시도..."
+fi
 
 # Claude가 Write 도구로 어떤 .md 파일을 만들었는지 확인
 WRITTEN_FILE=$(find "$OUTDIR" -name "*.md" -newer /tmp/claude_output.txt 2>/dev/null | head -1)
