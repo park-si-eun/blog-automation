@@ -39,7 +39,7 @@ mkdir -p "$OUTDIR"
 echo "블로그 글 생성 시작..."
 echo "저장 예정 경로: $OUTFILE"
 
-# Claude CLI로 실행 (실패해도 스크립트 계속 진행)
+# Claude CLI로 실행
 claude -p "$PROMPT" \
   --allowedTools "Read,Write,Glob,Bash,Grep" \
   --output-format text \
@@ -49,12 +49,19 @@ claude -p "$PROMPT" \
 CLAUDE_EXIT=${PIPESTATUS[0]}
 echo "Claude 종료 코드: $CLAUDE_EXIT"
 
-# Claude가 Write 도구로 파일을 만들었는지 확인
-if [ -f "$OUTFILE" ] && [ -s "$OUTFILE" ]; then
-  echo "✅ 파일 생성 확인: $OUTFILE"
-  wc -c "$OUTFILE"
+# Claude가 Write 도구로 어떤 .md 파일을 만들었는지 확인
+WRITTEN_FILE=$(find "$OUTDIR" -name "*.md" -newer /tmp/claude_output.txt 2>/dev/null | head -1)
+if [ -z "$WRITTEN_FILE" ]; then
+  # newer 비교 실패 시 fallback: 가장 최근 파일
+  WRITTEN_FILE=$(find "$OUTDIR" -name "*.md" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}')
+fi
+
+if [ -n "$WRITTEN_FILE" ] && [ -s "$WRITTEN_FILE" ]; then
+  echo "✅ Claude Write 도구로 생성된 파일: $WRITTEN_FILE"
+  wc -c "$WRITTEN_FILE"
+  OUTFILE="$WRITTEN_FILE"
 else
-  # Write 도구로 저장 안 됐으면 stdout 출력물을 파일로 저장
+  # Write 도구 미사용 — stdout을 파일로 저장
   echo "⚠️ Write 도구 미사용 — stdout 출력물로 파일 저장"
   cp /tmp/claude_output.txt "$OUTFILE"
   if [ -s "$OUTFILE" ]; then
@@ -65,3 +72,11 @@ else
     exit 1
   fi
 fi
+
+# 다음 단계에서 파일 경로를 참조할 수 있도록 저장
+echo "$OUTFILE" > /tmp/blog_file_path.txt
+echo "저장된 파일 경로: $OUTFILE"
+
+# 한글 파일명 문제 방지용 ASCII 이름 복사본 생성
+cp "$OUTFILE" /tmp/blog_post.md
+echo "복사본 생성: /tmp/blog_post.md ($(wc -c < /tmp/blog_post.md) bytes)"
