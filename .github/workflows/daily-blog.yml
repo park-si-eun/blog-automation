@@ -37,25 +37,32 @@ jobs:
       - name: 생성된 파일 확인
         id: check-files
         run: |
-          # git 변경사항 확인 (커밋 여부 판단용)
+          # git 변경사항 확인
           CHANGED=$(git status --short output/ 2>/dev/null || echo "")
-          if [ -n "$CHANGED" ]; then
-            echo "has_new_files=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_new_files=false" >> $GITHUB_OUTPUT
+          [ -n "$CHANGED" ] && echo "has_new_files=true" >> $GITHUB_OUTPUT || echo "has_new_files=false" >> $GITHUB_OUTPUT
+
+          # 생성 스크립트가 저장한 파일 경로 우선 참조
+          BLOG_FILE=$(cat /tmp/blog_file_path.txt 2>/dev/null)
+          echo "스크립트 기록 경로: $BLOG_FILE"
+
+          # 없으면 find로 탐색
+          if [ -z "$BLOG_FILE" ] || [ ! -s "$BLOG_FILE" ]; then
+            BLOG_FILE=$(find output/ -name "*.md" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}')
+            echo "find 탐색 결과: $BLOG_FILE"
           fi
 
-          # 가장 최근 수정된 .md 파일 찾기 (절대경로)
-          BLOG_FILE=$(find "$(pwd)/output/" -name "*.md" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}')
-          echo "감지된 블로그 파일: $BLOG_FILE"
+          echo "=== output/ 디렉토리 상태 ==="
+          find output/ 2>/dev/null || echo "(output/ 없음)"
+          echo "=== /tmp/blog_post.md 상태 ==="
+          ls -lh /tmp/blog_post.md 2>/dev/null || echo "(없음)"
 
-          if [ -n "$BLOG_FILE" ] && [ -f "$BLOG_FILE" ] && [ -s "$BLOG_FILE" ]; then
-            echo "blog_file=${BLOG_FILE}" >> $GITHUB_OUTPUT
-            echo "blog_size=$(wc -c < "$BLOG_FILE") bytes"
+          # /tmp/blog_post.md (ASCII 이름 복사본) 사용
+          if [ -f /tmp/blog_post.md ] && [ -s /tmp/blog_post.md ]; then
+            echo "blog_file=/tmp/blog_post.md" >> $GITHUB_OUTPUT
+            echo "✅ 첨부 파일: /tmp/blog_post.md ($(wc -c < /tmp/blog_post.md) bytes)"
           else
             echo "blog_file=" >> $GITHUB_OUTPUT
-            echo "⚠️ 블로그 파일 없음 또는 비어 있음"
-            find output/ 2>/dev/null || echo "(output/ 없음)"
+            echo "❌ 블로그 파일 없음"
           fi
 
       - name: Git 설정
