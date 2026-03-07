@@ -46,11 +46,8 @@ jobs:
             echo "$CHANGED" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
 
-            # 새로 생성된 .md 파일 본문 읽기
-            BLOG_FILE=$(git status --short output/ | grep '?? \|A ' | grep '\.md$' | awk '{print $2}' | head -1)
-            if [ -z "$BLOG_FILE" ]; then
-              BLOG_FILE=$(git diff --name-only --cached output/ | grep '\.md$' | head -1)
-            fi
+            # 가장 최근 수정된 .md 파일 읽기 (신규/수정 모두 대응)
+            BLOG_FILE=$(git status --short output/ | grep '\.md' | awk '{print $2}' | head -1)
             if [ -n "$BLOG_FILE" ] && [ -f "$BLOG_FILE" ]; then
               echo "blog_file=$BLOG_FILE" >> $GITHUB_OUTPUT
               echo "blog_content<<BLOG_EOF" >> $GITHUB_OUTPUT
