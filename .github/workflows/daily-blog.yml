@@ -84,25 +84,53 @@ jobs:
 
       - name: 이메일 알림 (항상 실행)
         if: always()
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          secure: false
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "${{ job.status == 'success' && '✅ [블로그 자동화] 오늘의 글 생성 완료' || '❌ [블로그 자동화] 글 생성 실패' }}"
-          to: ${{ secrets.MAIL_TO }}
-          from: ${{ secrets.MAIL_USERNAME }}
-          body: |
-            ${{ job.status == 'success' && '블로그 글 자동 생성이 완료되었습니다.' || '⚠️ 블로그 글 생성 중 오류가 발생했습니다.' }}
+        env:
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_ID: ${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - << 'PYEOF'
+          import smtplib, os
+          from email.mime.multipart import MIMEMultipart
+          from email.mime.text import MIMEText
 
-            실행 ID: ${{ github.run_id }}
-            파일: ${{ steps.check-files.outputs.blog_file }}
+          status   = os.environ.get('JOB_STATUS', 'unknown')
+          run_id   = os.environ.get('RUN_ID', '')
+          repo     = os.environ.get('REPOSITORY', '')
+          username = os.environ['MAIL_USERNAME']
+          password = os.environ['MAIL_PASSWORD']
+          to_addr  = os.environ['MAIL_TO']
 
-            Actions 로그:
-            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          try:
+              with open('/tmp/blog_post.md', 'r', encoding='utf-8') as f:
+                  blog_content = f.read()
+          except Exception as e:
+              blog_content = f"[블로그 파일 없음: {e}]"
 
-            ---
-            첨부 파일에서 블로그 글 전체를 확인하세요.
-          attachments: ${{ steps.check-files.outputs.blog_file }}
+          prefix  = '✅' if status == 'success' else '❌'
+          subject = f"{prefix} [블로그 자동화] {'오늘의 글 생성 완료' if status == 'success' else '글 생성 실패'}"
+
+          body = (
+              f"상태: {status}\n"
+              f"실행 ID: {run_id}\n"
+              f"Actions 로그: https://github.com/{repo}/actions/runs/{run_id}\n"
+              f"\n{'='*40}\n\n"
+              f"{blog_content}"
+          )
+
+          msg = MIMEMultipart()
+          msg['Subject'] = subject
+          msg['From']    = username
+          msg['To']      = to_addr
+          msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+          with smtplib.SMTP('smtp.gmail.com', 587) as s:
+              s.ehlo()
+              s.starttls()
+              s.login(username, password)
+              s.send_message(msg)
+          print("이메일 전송 완료")
+          PYEOF
