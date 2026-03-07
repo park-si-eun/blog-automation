@@ -108,14 +108,64 @@ PYEOF
 echo "글자수 검증: ${CHAR_COUNT}자 (기준: ${MIN_CHARS}자 이상, ${POST_TYPE})"
 
 if [ -n "$CHAR_COUNT" ] && [ "$CHAR_COUNT" -lt "$MIN_CHARS" ]; then
-  echo "⚠️ 글자수 미달: ${CHAR_COUNT}자"
-  python3 - <<PYEOF
-warning = "⚠️ 글자수 미달 경고: ${CHAR_COUNT}자 (${POST_TYPE} 기준 ${MIN_CHARS}자 이상 필요)\n검토 후 수동으로 보강해 주세요.\n\n---\n\n"
+  echo "⚠️ 글자수 미달: ${CHAR_COUNT}자 → 자동 재작성 시작"
+
+  EXISTING=$(cat /tmp/blog_post.md)
+  REWRITE_PROMPT="아래 블로그 글의 공백 제외 글자수가 ${CHAR_COUNT}자로 기준(${MIN_CHARS}자)에 미달합니다.
+
+브랜드 프로필(input/brands/${BRAND}.md)을 읽고, 기존 글의 구조와 방향을 유지하면서 새로운 장면·맥락·이용 상황을 추가해 ${MIN_CHARS}자 이상으로 보강하세요.
+
+규칙:
+- 브랜드 프로필에 없는 정보 지어내지 않기
+- 같은 표현·내용 반복 금지
+- 기존 글의 소제목 구조 유지
+- 보강 완료 후 공백 제외 글자수를 직접 측정해 ${MIN_CHARS}자 이상 확인
+- 완성된 글을 ${OUTFILE} 에 저장
+
+기존 글:
+${EXISTING}"
+
+  claude -p "$REWRITE_PROMPT" \
+    --model claude-sonnet-4-6 \
+    --allowedTools "Read,Write,Glob,Bash,Grep" \
+    --output-format text \
+    --dangerously-skip-permissions \
+    | tee /tmp/claude_rewrite.txt
+
+  # 재작성된 파일로 복사본 갱신
+  if [ -s "$OUTFILE" ]; then
+    cp "$OUTFILE" /tmp/blog_post.md
+  fi
+
+  # 재검증
+  CHAR_COUNT2=$(python3 - <<'PYEOF'
+with open('/tmp/blog_post.md', 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+filtered = []
+for line in lines:
+    l = line.strip()
+    if l.startswith('[이미지') or l.startswith('https://') or l.startswith('👉') or l.startswith('---') or l.startswith('#') or l == '':
+        continue
+    filtered.append(l)
+text = ' '.join(filtered)
+print(len(text.replace(' ', '')))
+PYEOF
+  )
+
+  echo "재작성 후 글자수: ${CHAR_COUNT2}자"
+
+  if [ -n "$CHAR_COUNT2" ] && [ "$CHAR_COUNT2" -lt "$MIN_CHARS" ]; then
+    echo "❌ 재작성 후에도 미달: ${CHAR_COUNT2}자 — 이메일에 경고 포함"
+    python3 - <<PYEOF
+warning = "❌ 재작성 후에도 글자수 미달: ${CHAR_COUNT2}자 (${POST_TYPE} 기준 ${MIN_CHARS}자 이상 필요)\n수동으로 보강 후 발행하세요.\n\n---\n\n"
 with open('/tmp/blog_post.md', 'r', encoding='utf-8') as f:
     content = f.read()
 with open('/tmp/blog_post.md', 'w', encoding='utf-8') as f:
     f.write(warning + content)
 PYEOF
+  else
+    echo "✅ 재작성 후 글자수 통과: ${CHAR_COUNT2}자"
+  fi
 else
   echo "✅ 글자수 통과: ${CHAR_COUNT}자"
 fi
