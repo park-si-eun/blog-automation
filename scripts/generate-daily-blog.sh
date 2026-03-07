@@ -29,7 +29,8 @@ echo "====================================="
 
 # blog.md 커맨드 내용을 읽어 $ARGUMENTS 치환
 ARGUMENTS="$BRAND | $TARGET"
-PROMPT=$(sed "s|\\\$ARGUMENTS|${ARGUMENTS}|g" .claude/commands/blog.md)
+TEMPLATE=$(cat .claude/commands/blog.md)
+PROMPT="${TEMPLATE//\$ARGUMENTS/$ARGUMENTS}"
 
 echo "블로그 글 생성 시작..."
 
