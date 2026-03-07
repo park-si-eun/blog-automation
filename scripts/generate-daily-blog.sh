@@ -5,8 +5,7 @@
 BRAND="sos-coffee-brunch"
 
 # 오늘 요일 판별 (1=월, 2=화, 3=수, 4=목, 5=금, 6=토, 7=일)
-# TEST: 월요일 강제 실행 (테스트 후 아래 줄 삭제)
-DAY=1
+DAY=$(date '+%u' -d '+9 hours' 2>/dev/null || date -u -v+9H '+%u')
 
 case $DAY in
   1) TARGET="월요일" ;;
