@@ -92,7 +92,7 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          pip3 install markdown -q
+          pip3 show markdown -q 2>/dev/null || pip3 install markdown -q
           python3 - << 'PYEOF'
           import smtplib, os, re, markdown
           from email.mime.multipart import MIMEMultipart
