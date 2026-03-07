@@ -92,8 +92,9 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           REPOSITORY: ${{ github.repository }}
         run: |
+          pip3 install markdown -q
           python3 - << 'PYEOF'
-          import smtplib, os
+          import smtplib, os, re, markdown
           from email.mime.multipart import MIMEMultipart
           from email.mime.text import MIMEText
 
@@ -113,19 +114,15 @@ jobs:
           prefix  = '✅' if status == 'success' else '❌'
           subject = f"{prefix} [블로그 자동화] {'오늘의 글 생성 완료' if status == 'success' else '글 생성 실패'}"
 
-          body = (
-              f"상태: {status}\n"
-              f"실행 ID: {run_id}\n"
-              f"Actions 로그: https://github.com/{repo}/actions/runs/{run_id}\n"
-              f"\n{'='*40}\n\n"
-              f"{blog_content}"
-          )
+          log_url = f"https://github.com/{repo}/actions/runs/{run_id}"
+          header_md = f"**상태:** {status}  \n**실행 ID:** {run_id}  \n**Actions 로그:** [{log_url}]({log_url})\n\n---\n\n"
+          html_body = markdown.markdown(header_md + blog_content, extensions=['nl2br'])
 
-          msg = MIMEMultipart()
+          msg = MIMEMultipart('alternative')
           msg['Subject'] = subject
           msg['From']    = username
           msg['To']      = to_addr
-          msg.attach(MIMEText(body, 'plain', 'utf-8'))
+          msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
           with smtplib.SMTP('smtp.gmail.com', 587) as s:
               s.ehlo()
