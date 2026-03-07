@@ -34,48 +34,29 @@ jobs:
           chmod +x scripts/generate-daily-blog.sh
           bash scripts/generate-daily-blog.sh
 
-      - name: 생성된 파일 확인 및 이메일 본문 작성
+      - name: 생성된 파일 확인
         id: check-files
         run: |
           # git 변경사항 확인 (커밋 여부 판단용)
           CHANGED=$(git status --short output/ 2>/dev/null || echo "")
-          echo "git 변경사항: $CHANGED"
           if [ -n "$CHANGED" ]; then
             echo "has_new_files=true" >> $GITHUB_OUTPUT
           else
             echo "has_new_files=false" >> $GITHUB_OUTPUT
           fi
 
-          # 가장 최근 수정된 .md 파일 찾기
-          BLOG_FILE=$(find output/ -name "*.md" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}')
+          # 가장 최근 수정된 .md 파일 찾기 (절대경로)
+          BLOG_FILE=$(find "$(pwd)/output/" -name "*.md" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | awk '{print $2}')
           echo "감지된 블로그 파일: $BLOG_FILE"
-          echo "blog_file=${BLOG_FILE}" >> $GITHUB_OUTPUT
 
-          # 이메일 본문을 파일로 저장 (멀티라인 안전하게 전달)
-          EMAIL_BODY=/tmp/email_body.txt
-          {
-            echo "블로그 글 자동 생성 결과"
-            echo ""
-            echo "실행 ID: ${{ github.run_id }}"
-            echo "시간: KST 오전 8시 자동 실행"
-            echo "파일: ${BLOG_FILE}"
-            echo ""
-            echo "=============================="
-            echo ""
-            if [ -n "$BLOG_FILE" ] && [ -f "$BLOG_FILE" ] && [ -s "$BLOG_FILE" ]; then
-              cat "$BLOG_FILE"
-            else
-              echo "글 파일을 찾을 수 없습니다."
-              echo "output/ 디렉토리 내용:"
-              find output/ 2>/dev/null || echo "(비어있음)"
-            fi
-            echo ""
-            echo "=============================="
-            echo ""
-            echo "Actions 로그: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          } > "$EMAIL_BODY"
-
-          echo "이메일 본문 크기: $(wc -c < $EMAIL_BODY) bytes"
+          if [ -n "$BLOG_FILE" ] && [ -f "$BLOG_FILE" ] && [ -s "$BLOG_FILE" ]; then
+            echo "blog_file=${BLOG_FILE}" >> $GITHUB_OUTPUT
+            echo "blog_size=$(wc -c < "$BLOG_FILE") bytes"
+          else
+            echo "blog_file=" >> $GITHUB_OUTPUT
+            echo "⚠️ 블로그 파일 없음 또는 비어 있음"
+            find output/ 2>/dev/null || echo "(output/ 없음)"
+          fi
 
       - name: Git 설정
         run: |
@@ -106,4 +87,15 @@ jobs:
           subject: "${{ job.status == 'success' && '✅ [블로그 자동화] 오늘의 글 생성 완료' || '❌ [블로그 자동화] 글 생성 실패' }}"
           to: ${{ secrets.MAIL_TO }}
           from: ${{ secrets.MAIL_USERNAME }}
-          body_path: /tmp/email_body.txt
+          body: |
+            ${{ job.status == 'success' && '블로그 글 자동 생성이 완료되었습니다.' || '⚠️ 블로그 글 생성 중 오류가 발생했습니다.' }}
+
+            실행 ID: ${{ github.run_id }}
+            파일: ${{ steps.check-files.outputs.blog_file }}
+
+            Actions 로그:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            ---
+            첨부 파일에서 블로그 글 전체를 확인하세요.
+          attachments: ${{ steps.check-files.outputs.blog_file }}
