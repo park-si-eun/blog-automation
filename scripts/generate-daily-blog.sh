@@ -39,12 +39,13 @@ mkdir -p "$OUTDIR"
 echo "블로그 글 생성 시작..."
 echo "저장 예정 경로: $OUTFILE"
 
-# Claude CLI로 실행
+# Claude CLI로 실행 (Sonnet 4.6 고정 — 품질 보장)
 claude -p "$PROMPT" \
+  --model claude-sonnet-4-6 \
   --allowedTools "Read,Write,Glob,Bash,Grep" \
   --output-format text \
   --dangerously-skip-permissions \
-  2>&1 | tee /tmp/claude_output.txt
+  | tee /tmp/claude_output.txt
 
 CLAUDE_EXIT=${PIPESTATUS[0]}
 echo "Claude 종료 코드: $CLAUDE_EXIT"
