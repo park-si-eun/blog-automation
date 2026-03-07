@@ -35,9 +35,20 @@ jobs:
           bash scripts/generate-daily-blog.sh
 
       - name: 생성된 파일 확인
+        id: check-files
         run: |
           echo "생성된 파일 목록:"
-          git status --short output/ || echo "변경 없음"
+          CHANGED=$(git status --short output/ 2>/dev/null || echo "")
+          echo "$CHANGED"
+          if [ -n "$CHANGED" ]; then
+            echo "has_new_files=true" >> $GITHUB_OUTPUT
+            echo "file_list<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "has_new_files=false" >> $GITHUB_OUTPUT
+            echo "file_list=변경된 파일 없음" >> $GITHUB_OUTPUT
+          fi
 
       - name: Git 설정
         run: |
@@ -55,3 +66,50 @@ jobs:
             git commit -m "auto: ${TODAY} ${WEEKDAY} 블로그 글 자동 생성"
             git push origin HEAD
           fi
+
+      - name: 성공 이메일 알림
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "✅ [블로그 자동화] 오늘의 글 생성 완료"
+          to: ${{ secrets.MAIL_TO }}
+          from: ${{ secrets.MAIL_USERNAME }}
+          body: |
+            블로그 글 자동 생성이 완료되었습니다.
+
+            📅 날짜: ${{ github.run_id }} 실행
+            🕗 시간: KST 오전 8시 자동 실행
+
+            📄 생성된 파일:
+            ${{ steps.check-files.outputs.file_list }}
+
+            GitHub Actions 실행 결과:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: 실패 이메일 알림
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "❌ [블로그 자동화] 오늘의 글 생성 실패"
+          to: ${{ secrets.MAIL_TO }}
+          from: ${{ secrets.MAIL_USERNAME }}
+          body: |
+            블로그 글 자동 생성 중 오류가 발생했습니다.
+
+            📅 날짜: ${{ github.run_id }} 실행
+            🕗 시간: KST 오전 8시 자동 실행
+
+            오류 로그 확인:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            GitHub Actions 페이지에서 실패 원인을 확인해 주세요.
