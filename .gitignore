@@ -3,8 +3,8 @@
 .env.local
 .env.*.local
 
-# 생성 결과물 (대용량 글 파일 누적 방지)
-output/
+# 생성 결과물
+# output/
 
 # 보관 파일
 archive/
