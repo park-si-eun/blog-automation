@@ -2,9 +2,8 @@ name: 일별 블로그 자동 생성
 
 on:
   schedule:
-    # 매주 월~금 오전 8시 (KST) = UTC 전날 23시
-    # UTC 기준: 일~목 23:00
-    - cron: '0 23 * * 0-4'
+    # 매일 오전 8시 (KST) = UTC 전날 23시
+    - cron: '0 23 * * *'
   workflow_dispatch:  # 수동 실행 (테스트용)
 
 jobs:
